@@ -26,6 +26,10 @@ then
   exit 1
 fi
 
+$ECHO "Purging any modules to remove conflicts..." |& tee -a "${CCONFIGURELOG}"
+eval `/usr/bin/modulecmd bash purge` |& tee -a "${CCONFIGURELOG}"
+unset LD_LIBRARY_PATH
+
 
 $ECHO "Moving up one directory..." |& tee -a "${CCONFIGURELOG}"
 cd .. 
@@ -71,9 +75,6 @@ then
   $ECHO "Removing any lmod cache (causes issues)..." |& tee -a "${CCONFIGURELOG}"
   rm -rfv ~/.lmod.d |& tee -a "${CCONFIGURELOG}"
 fi
-
-$ECHO "Purging any modules to remove conflicts..." |& tee -a "${CCONFIGURELOG}"
-module purge |& tee -a "${CCONFIGURELOG}"
 
 $ECHO "Creating minimal conda environment in `pwd`/env" |& tee -a "${CCONFIGURELOG}"
 conda create -y  -p ${PWD}/env >> "${CCONFIGURELOG}" 2>&1
