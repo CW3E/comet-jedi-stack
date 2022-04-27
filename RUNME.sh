@@ -355,6 +355,7 @@ $ECHO "Applying additional fixes that did not make patch..." |& tee -a "${CCONFI
 # Didn't make the patch
 perl -pi -e 's/url=http:/url=https:/' libs/build_zlib.sh |& tee -a "${CCONFIGURELOG}"
 perl -pi -e 's/1.2.11/1.2.12/' build_stack.sh |& tee -a "${CCONFIGURELOG}"
+perl -pi -e 's/NTHREADS=4/NTHREADS=24/' config/config_custom.sh |& tee -a "${CCONFIGURELOG}"
 
 $ECHO "Skipping ./setup_environment.sh step, we do not need it..." |& tee -a "${CCONFIGURELOG}"
 # ./setup_environment.sh |& tee -a "${CCONFIGURELOG}"
