@@ -54,7 +54,16 @@ then
     exit 1
   fi
   $ECHON " -Done and looks like it is working!" |& tee -a "${CCONFIGURELOG}"
+else
+  CCONDAROOT=${CONDA_EXE%%/conda}
+  if [ -f "${CCONDAROOT}/activate" ]
+  then
+    $ECHON "ERROR! Failed find 'bin/activate' file to source for current conda environment; ${{CCONDAROOT}" |& tee -a "${CCONFIGURELOG}"
+    exit 1
+  fi
+  $ECHO "Sourcing ${CCONDAROOT}/activate so conda works properly..." |& tee -a "${CCONFIGURELOG}"
 
+  source "${CCONDAROOT}/activate"
 fi
 
 if [[ -d ~/.lmod.d ]] 
