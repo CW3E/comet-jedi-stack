@@ -9,121 +9,127 @@ export CCONFIGURELOG="${PWD}/comet-jedi-stack.`/bin/date -Iseconds`.log"
 export CBUILDLOG="${PWD}/comet-jedi-stack-builds.`/bin/date -Iseconds`.log"
 
 
-ECHO='echo -e \n##'
-ECHON='echo -e ##'
+function cecho
+{
+  echo -e "\n$(/usr/bin/date "+%T") ## $*"
+}
+function cechon
+{
+  echo -e "$(/usr/bin/date "+%T") ## $*"
+}
 
-$ECHO "Writing the following logs:" |& tee -a "${CCONFIGURELOG}"
-$ECHON " Log of what you see on the screen: ${CCONFIGURELOG}" |& tee -a "${CCONFIGURELOG}"
-$ECHON " Log of the verbose build output (hidden): ${CBUILDLOG}" |& tee -a "${CCONFIGURELOG}"
+cecho "Writing the following logs:" |& tee -a "${CCONFIGURELOG}"
+cechon " Log of what you see on the screen: ${CCONFIGURELOG}" |& tee -a "${CCONFIGURELOG}"
+cechon " Log of the verbose build output (hidden): ${CBUILDLOG}" |& tee -a "${CCONFIGURELOG}"
 
 # For downloads
 export ftp_proxy=10.21.2.4:3128
 
 if [[ `hostname|sed 's/\..*//'|egrep -c 'comet-..-..'` -ne 1 ]]
 then
-  $ECHO " Has to be run on a compute node, use the following command to launch an interactive session:" |& tee -a "${CCONFIGURELOG}"
+  cecho " Has to be run on a compute node, use the following command to launch an interactive session:" |& tee -a "${CCONFIGURELOG}"
   echo "$ srun --partition=compute --pty --nodes=1 --wait=0 --export=ALL -t 48:00:00 /bin/bash" |& tee -a "${CCONFIGURELOG}"
   exit 1
 fi
 
-$ECHO "Purging any modules to remove conflicts..." |& tee -a "${CCONFIGURELOG}"
+cecho "Purging any modules to remove conflicts..." |& tee -a "${CCONFIGURELOG}"
 eval `/usr/bin/modulecmd bash purge` |& tee -a "${CCONFIGURELOG}"
 unset LD_LIBRARY_PATH
 
 
-$ECHO "Moving up one directory..." |& tee -a "${CCONFIGURELOG}"
+cecho "Moving up one directory..." |& tee -a "${CCONFIGURELOG}"
 cd .. 
-$ECHO "Working in ${PWD}..." |& tee -a "${CCONFIGURELOG}"
+cecho "Working in ${PWD}..." |& tee -a "${CCONFIGURELOG}"
 
 which conda > /dev/null 2>&1
 if [[ $? -eq 1 ]]
 then
-  $ECHO "This setup requires Conda, installing Miniconda in this directory..." |& tee -a "${CCONFIGURELOG}"
+  cecho "This setup requires Conda, installing Miniconda in this directory..." |& tee -a "${CCONFIGURELOG}"
 
   # Set by default and upsets the install
   unset PYTHONPATH
 
-  $ECHON " -Downloading..." |& tee -a "${CCONFIGURELOG}"
+  cechon " -Downloading..." |& tee -a "${CCONFIGURELOG}"
   /bin/wget -nv https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh |& tee -a "${CCONFIGURELOG}"
-  $ECHON " -Installing (takes a few minutes)... $(/bin/date)" |& tee -a "${CCONFIGURELOG}"
+  cechon " -Installing (takes a few minutes)... $(/bin/date)" |& tee -a "${CCONFIGURELOG}"
   /bin/bash Miniconda3-latest-Linux-x86_64.sh -b -p `pwd`/miniconda3 >> "${CCONFIGURELOG}" 2>&1
 
-  $ECHON " -Activating environment" |& tee -a "${CCONFIGURELOG}"
+  cechon " -Activating environment" |& tee -a "${CCONFIGURELOG}"
   source ./miniconda3/bin/activate 
-  $ECHON " -Confirming it is active" |& tee -a "${CCONFIGURELOG}"
+  cechon " -Confirming it is active" |& tee -a "${CCONFIGURELOG}"
   conda env list > /dev/null 2>&1
   if [[ $? -ne 0 ]]
   then
-    $ECHON " -ERROR! Failed to get exit code zero when we ran... conda env list" |& tee -a "${CCONFIGURELOG}"
+    cechon " -ERROR! Failed to get exit code zero when we ran... conda env list" |& tee -a "${CCONFIGURELOG}"
     exit 1
   fi
-  $ECHON " -Done and looks like it is working!" |& tee -a "${CCONFIGURELOG}"
+  cechon " -Done and looks like it is working!" |& tee -a "${CCONFIGURELOG}"
 else
   CCONDAROOT=${CONDA_EXE%%/conda}
   if [ ! -f "${CCONDAROOT}/activate" ]
   then
-    $ECHON "ERROR! Failed find 'bin/activate' file to source for current conda environment: ${CCONDAROOT}" |& tee -a "${CCONFIGURELOG}"
+    cechon "ERROR! Failed find 'bin/activate' file to source for current conda environment: ${CCONDAROOT}" |& tee -a "${CCONFIGURELOG}"
     exit 1
   fi
-  $ECHO "Sourcing ${CCONDAROOT}/activate so conda works properly..." |& tee -a "${CCONFIGURELOG}"
+  cecho "Sourcing ${CCONDAROOT}/activate so conda works properly..." |& tee -a "${CCONFIGURELOG}"
 
   source "${CCONDAROOT}/activate"
 fi
 
 if [[ -d ~/.lmod.d ]] 
 then 
-  $ECHO "Removing any lmod cache (causes issues)..." |& tee -a "${CCONFIGURELOG}"
+  cecho "Removing any lmod cache (causes issues)..." |& tee -a "${CCONFIGURELOG}"
   rm -rfv ~/.lmod.d |& tee -a "${CCONFIGURELOG}"
 fi
 
-$ECHO "Creating minimal conda environment in `pwd`/env" |& tee -a "${CCONFIGURELOG}"
+cecho "Creating minimal conda environment in `pwd`/env" |& tee -a "${CCONFIGURELOG}"
 conda create -y  -p ${PWD}/env >> "${CCONFIGURELOG}" 2>&1
-$ECHO "Activating new environment..." |& tee -a "${CCONFIGURELOG}"
+cecho "Activating new environment..." |& tee -a "${CCONFIGURELOG}"
 conda activate ${PWD}/env >> "${CCONFIGURELOG}" 2>&1
 
 if [[ "x${CONDA_PREFIX}" != "x${PWD}/env" ]]
 then
-  $ECHO "ERROR! Not in the expected environment..." |& tee -a "${CCONFIGURELOG}"
+  cecho "ERROR! Not in the expected environment..." |& tee -a "${CCONFIGURELOG}"
   exit 1
 fi
 
-$ECHO "Installing lmod & python..." |& tee -a "${CCONFIGURELOG}"
+cecho "Installing lmod & python..." |& tee -a "${CCONFIGURELOG}"
 conda install -y -c conda-forge lmod python==3.9.12 >> "${CCONFIGURELOG}" 2>&1
 
-$ECHO "Setting JEDI_OPT variable to ${PWD}/modules..." |& tee -a "${CCONFIGURELOG}"
+cecho "Setting JEDI_OPT variable to ${PWD}/modules..." |& tee -a "${CCONFIGURELOG}"
 export JEDI_OPT=${PWD}/modules 
 
-$ECHO "Adding ${JEDI_OPT}/core, /share/apps/compute/modulefiles/applications, & /share/apps/compute/modulefiles/ to module search path" |& tee -a "${CCONFIGURELOG}"
+cecho "Adding ${JEDI_OPT}/core, /share/apps/compute/modulefiles/applications, & /share/apps/compute/modulefiles/ to module search path" |& tee -a "${CCONFIGURELOG}"
 module use /share/apps/compute/modulefiles /share/apps/compute/modulefiles/applications $JEDI_OPT/modulefiles/core 
 
-$ECHO "Logging the available modules..." |& tee -a "${CCONFIGURELOG}"
+cecho "Logging the available modules..." |& tee -a "${CCONFIGURELOG}"
 module avail >> "${CCONFIGURELOG}" 2>&1
 
 if [[ `module avail |& grep -c "intel/2019.5.281"` -ne 1 ]]
 then
-  $ECHO "ERROR! Did not find intel/2019.5.281 in list of modules..." |& tee -a "${CCONFIGURELOG}"
+  cecho "ERROR! Did not find intel/2019.5.281 in list of modules..." |& tee -a "${CCONFIGURELOG}"
   exit 1
 fi
 
 if [[ `module avail |& grep -c "intelmpi/2019.5.281"` -ne 1 ]]
 then
-  $ECHO "ERROR! Did not find intelmpi/2019.5.281 in list of modules..." |& tee -a "${CCONFIGURELOG}"
+  cecho "ERROR! Did not find intelmpi/2019.5.281 in list of modules..." |& tee -a "${CCONFIGURELOG}"
   exit 1
 fi
 
-$ECHO "Cloning jedi-stack repo from  ${JEDISTACKREPO}..." |& tee -a "${CCONFIGURELOG}"
+cecho "Cloning jedi-stack repo from  ${JEDISTACKREPO}..." |& tee -a "${CCONFIGURELOG}"
 git clone ${JEDISTACKREPO} |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "Moving into jedi-stack directory..." |& tee -a "${CCONFIGURELOG}"
+cecho "Moving into jedi-stack directory..." |& tee -a "${CCONFIGURELOG}"
 cd jedi-stack 
 
-$ECHO "Checking out ${JEDISTACKBRANCH} branch..." |& tee -a "${CCONFIGURELOG}"
+cecho "Checking out ${JEDISTACKBRANCH} branch..." |& tee -a "${CCONFIGURELOG}"
 git checkout ${JEDISTACKBRANCH} |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "Checking out ${JEDISTACKCOMMIT} commit..." |& tee -a "${CCONFIGURELOG}"
+cecho "Checking out ${JEDISTACKCOMMIT} commit..." |& tee -a "${CCONFIGURELOG}"
 git checkout ${JEDISTACKCOMMIT} |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "Creating patch file (0001-comet.patch)..." |& tee -a "${CCONFIGURELOG}"
+cecho "Creating patch file (0001-comet.patch)..." |& tee -a "${CCONFIGURELOG}"
 cat > 0001-comet.patch << 'EOL'
 From f43ff5b9a5e23ee0bf4cb2f81bbcefdd0b08248b Mon Sep 17 00:00:00 2001
 From: Patrick Mulrooney <mulroony@comet-33-03.sdsc.edu>
@@ -342,36 +348,53 @@ index 0000000..92758f8
 2.19.5
 EOL
 
-$ECHO "Setting current directory in patch file..." |& tee -a "${CCONFIGURELOG}"
+cecho "Setting current directory in patch file..." |& tee -a "${CCONFIGURELOG}"
 perl -pi -e "s|CHANGEME|${PWD%%/${PWD##*/}}/modules|" 0001-comet.patch  |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "Applying patch file..." |& tee -a "${CCONFIGURELOG}"
+cecho "Applying patch file..." |& tee -a "${CCONFIGURELOG}"
 git am 0001-comet.patch  |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "Moving into buildscripts/ directory..." |& tee -a "${CCONFIGURELOG}"
+cecho "Moving into buildscripts/ directory..." |& tee -a "${CCONFIGURELOG}"
 cd buildscripts/ 
 
-$ECHO "Applying additional fixes that did not make patch..." |& tee -a "${CCONFIGURELOG}"
+cecho "Applying additional fixes that did not make patch..." |& tee -a "${CCONFIGURELOG}"
 # Didn't make the patch
 perl -pi -e 's/url=http:/url=https:/' libs/build_zlib.sh |& tee -a "${CCONFIGURELOG}"
 perl -pi -e 's/1.2.11/1.2.12/' build_stack.sh |& tee -a "${CCONFIGURELOG}"
 perl -pi -e 's/NTHREADS=4/NTHREADS=24/' config/config_custom.sh |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "Skipping ./setup_environment.sh step, we do not need it..." |& tee -a "${CCONFIGURELOG}"
+cecho "Skipping ./setup_environment.sh step, we do not need it..." |& tee -a "${CCONFIGURELOG}"
 # ./setup_environment.sh |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "Running ./setup_modules.sh custom..." |& tee -a "${CCONFIGURELOG}"
+cecho "Running ./setup_modules.sh custom..." |& tee -a "${CCONFIGURELOG}"
 ./setup_modules.sh custom >> "${CBUILDLOG}" 2>&1
-$ECHO "Last few lines of the build log..." |& tee -a "${CCONFIGURELOG}"
+
+ALLGOOD=`tail -4 "${CBUILDLOG}" |grep -c "setup_modules.sh custom: success"`
+
+if [[ $ALLGOOD -eq 0 ]]
+then
+  cecho "ERROR: Did not get confirmation that the './setup_module.sh custom' completed successfully. Exiting..."
+  exit 1
+fi
+
+cecho "Last few lines of the build log..." |& tee -a "${CCONFIGURELOG}"
 /bin/tail "${CBUILDLOG}" |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "Running ./build_stack.sh custom (go get some coffee, then go for a long hike, and maybe when you get back it will be done)..." |& tee -a "${CCONFIGURELOG}"
+cecho "Running ./build_stack.sh custom (go get some coffee, then go for a long hike, and maybe when you get back it will be done)..." |& tee -a "${CCONFIGURELOG}"
 ./build_stack.sh custom >> "${CBUILDLOG}" 2>&1
-$ECHO "Last few lines of the build log..." |& tee -a "${CCONFIGURELOG}"
+
+ALLGOOD=`tail -4 "${CBUILDLOG}" |grep -c "build_stack.sh custom: success"`
+
+if [[ $ALLGOOD -eq 0 ]]
+then
+  cecho "ERROR: Did not get confirmation that the './build_stack.sh custom' completed successfully. Letting this script finish, but it likely did not work..."
+fi
+
+cecho "Last few lines of the build log..." |& tee -a "${CCONFIGURELOG}"
 /bin/tail "${CBUILDLOG}" |& tee -a "${CCONFIGURELOG}"
 # If all goes well this will take a while, it is building everything
 
-$ECHO "COMPLETED!!!" |& tee -a "${CCONFIGURELOG}"
+cecho "COMPLETED!!!" |& tee -a "${CCONFIGURELOG}"
 
 cd ../.. 
 
@@ -396,7 +419,7 @@ perl -pi -e "s|CHANGEMEPATH|${PWD}|" setup_environment.sh  |& tee -a "${CCONFIGU
 
 chmod a+x setup_environment.sh |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "To setup the environment if you get logged out, just run: ${PWD}/setup_environment.sh" |& tee -a "${CCONFIGURELOG}"
+cecho "To setup the environment if you get logged out, just run: ${PWD}/setup_environment.sh" |& tee -a "${CCONFIGURELOG}"
 
-$ECHO "All output from this setup can be found in: ${CCONFIGURELOG}"
+cecho "All output from this setup can be found in: ${CCONFIGURELOG}"
 
