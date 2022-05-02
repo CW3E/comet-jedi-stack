@@ -419,7 +419,7 @@ perl -pi -e "s|CHANGEMEPATH|${PWD}|" setup_environment.sh  |& tee -a "${CCONFIGU
 
 chmod a+x setup_environment.sh |& tee -a "${CCONFIGURELOG}"
 
-cecho "To setup the environment if you get logged out, just run: ${PWD}/setup_environment.sh" |& tee -a "${CCONFIGURELOG}"
+cecho "To setup the environment if you get logged out, just run: source ${PWD}/setup_environment.sh" |& tee -a "${CCONFIGURELOG}"
 
 cecho "All output from this setup can be found in: ${CCONFIGURELOG}"
 
