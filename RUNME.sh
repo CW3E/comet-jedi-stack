@@ -1,9 +1,14 @@
 #!/bin/bash
 
+#Initial version Patrick Mulrooney
+#Last updated by Caroline Papadopoulos 5/31/2022
+
 # You can change these, but this is what I built against and know works on Comet.
 export JEDISTACKREPO="https://github.com/JCSDA/jedi-stack.git"
 export JEDISTACKBRANCH="develop"
-export JEDISTACKCOMMIT="8753d606a00dd4ce29b95b6ce0e43fc5f66169c4"
+# cpapadop previous version before atlas upgrade to atlas ecmwf 0.29.0
+#export JEDISTACKCOMMIT="8753d606a00dd4ce29b95b6ce0e43fc5f66169c4"
+export JEDISTACKCOMMIT="6e3145fe955d2023c553f0c73d2ce6094133a15f"
 
 export CCONFIGURELOG="${PWD}/comet-jedi-stack.`/bin/date -Iseconds`.log"
 export CBUILDLOG="${PWD}/comet-jedi-stack-builds.`/bin/date -Iseconds`.log"
@@ -94,7 +99,10 @@ then
 fi
 
 cecho "Installing lmod & python..." |& tee -a "${CCONFIGURELOG}"
-conda install -y -c conda-forge lmod python==3.9.12 >> "${CCONFIGURELOG}" 2>&1
+conda install -y -c conda-forge lmod==8.6.18 python==3.9.12 >> "${CCONFIGURELOG}" 2>&1
+
+cecho "Installing git & git-lfs..." |& tee -a "${CCONFIGURELOG}"
+conda install -y -c conda-forge git git-lfs >> "${CCONFIGURELOG}" 2>&1
 
 cecho "Setting JEDI_OPT variable to ${PWD}/modules..." |& tee -a "${CCONFIGURELOG}"
 export JEDI_OPT=${PWD}/modules 
@@ -105,15 +113,15 @@ module use /share/apps/compute/modulefiles /share/apps/compute/modulefiles/appli
 cecho "Logging the available modules..." |& tee -a "${CCONFIGURELOG}"
 module avail >> "${CCONFIGURELOG}" 2>&1
 
-if [[ `module avail |& grep -c "intel/2019.5.281"` -ne 1 ]]
+if [[ `module avail |& grep -c "intel/2020u4"` -ne 1 ]]
 then
-  cecho "ERROR! Did not find intel/2019.5.281 in list of modules..." |& tee -a "${CCONFIGURELOG}"
+  cecho "ERROR! Did not find intel/2020u4 in list of modules..." |& tee -a "${CCONFIGURELOG}"
   exit 1
 fi
 
-if [[ `module avail |& grep -c "intelmpi/2019.5.281"` -ne 1 ]]
+if [[ `module avail |& grep -c "intelmpi/2020u4"` -ne 1 ]]
 then
-  cecho "ERROR! Did not find intelmpi/2019.5.281 in list of modules..." |& tee -a "${CCONFIGURELOG}"
+  cecho "ERROR! Did not find intelmpi/2020u4 in list of modules..." |& tee -a "${CCONFIGURELOG}"
   exit 1
 fi
 
@@ -131,22 +139,24 @@ git checkout ${JEDISTACKCOMMIT} |& tee -a "${CCONFIGURELOG}"
 
 cecho "Creating patch file (0001-comet.patch)..." |& tee -a "${CCONFIGURELOG}"
 cat > 0001-comet.patch << 'EOL'
-From f43ff5b9a5e23ee0bf4cb2f81bbcefdd0b08248b Mon Sep 17 00:00:00 2001
-From: Patrick Mulrooney <mulroony@comet-33-03.sdsc.edu>
-Date: Tue, 26 Apr 2022 18:26:13 -0700
-Subject: [PATCH] CometChanges
+From a0c0647df28af84d23d3ea94793f6d7a0f3bc9aa Mon Sep 17 00:00:00 2001
+From: cpapadop <cpapadopoulos@ucsd.edu>
+Date: Fri, 27 May 2022 11:19:19 -0700
+Subject: [PATCH] Updated stack changes for comet
 
 ---
  buildscripts/build_stack.sh                   |  2 +-
- buildscripts/config/config_custom.sh          | 86 +++++++++++++++++--
- .../compilerVersion/intelmpi/intelmpi.lua     | 35 ++++++++
- .../jedi-intelmpi/jedi-intelmpi.lua           | 30 +++++++
- 4 files changed, 146 insertions(+), 7 deletions(-)
+ buildscripts/config/config_custom.sh          | 98 +++++++++++++++++--
+ buildscripts/libs/build_zlib.sh               |  2 +-
+ .../compilerVersion/intelmpi/intelmpi.lua     | 35 +++++++
+ .../jedi-intelmpi/jedi-intelmpi.lua           | 30 ++++++
+ modulefiles/core/jedi-intel/jedi-intel.lua    |  2 +
+ 6 files changed, 160 insertions(+), 9 deletions(-)
  create mode 100644 modulefiles/compiler/compilerName/compilerVersion/intelmpi/intelmpi.lua
  create mode 100644 modulefiles/compiler/compilerName/compilerVersion/jedi-intelmpi/jedi-intelmpi.lua
 
 diff --git a/buildscripts/build_stack.sh b/buildscripts/build_stack.sh
-index 56ed809..5657dba 100755
+index 75d1e59..37e9d53 100755
 --- a/buildscripts/build_stack.sh
 +++ b/buildscripts/build_stack.sh
 @@ -54,7 +54,7 @@ else
@@ -159,7 +169,7 @@ index 56ed809..5657dba 100755
  # this is needed to set environment variables if modules are not used
  $MODULES || no_modules $1
 diff --git a/buildscripts/config/config_custom.sh b/buildscripts/config/config_custom.sh
-index 757808c..622a585 100644
+index 757808c..9616ce9 100644
 --- a/buildscripts/config/config_custom.sh
 +++ b/buildscripts/config/config_custom.sh
 @@ -5,8 +5,8 @@
@@ -168,12 +178,12 @@ index 757808c..622a585 100644
  # Compiler/MPI combination
 -export JEDI_COMPILER="gnu/9.3.0"
 -export JEDI_MPI="openmpi/4.0.3"
-+export JEDI_COMPILER="intel/2019.5.281"
-+export JEDI_MPI="intelmpi/2019.5.281"
++export JEDI_COMPILER="intel/2020u4"
++export JEDI_MPI="intelmpi/2020u4"
  #export MPI="mpich/3.2.1"
  
  #export JEDI_COMPILER="intel/19.0.5"
-@@ -22,11 +22,12 @@ export JEDI_MPI="openmpi/4.0.3"
+@@ -22,15 +22,16 @@ export JEDI_MPI="openmpi/4.0.3"
  #             as installed by package managers like apt-get or hombrewo.
  #             This is a common option for, e.g., gcc/g++/gfortrant
  # from-source: This is to build from source
@@ -190,7 +200,12 @@ index 757808c..622a585 100644
  export PKGDIR=pkg
  export LOGDIR=buildscripts/log
  export OVERWRITE=N
-@@ -42,3 +43,76 @@ export FFLAGS=""
+-export NTHREADS=4
++export NTHREADS=24
+ export   MAKE_CHECK=N
+ export MAKE_VERBOSE=Y
+ export   MAKE_CLEAN=N
+@@ -42,3 +43,86 @@ export FFLAGS=""
  export CFLAGS=""
  export CXXFLAGS=""
  export LDFLAGS=""
@@ -267,9 +282,32 @@ index 757808c..622a585 100644
 +    export      STACK_BUILD_ATLAS=N
 +    export    STACK_BUILD_ECCODES=N
 +fi
++
++# C++-14 compliant compiler settings
++# set / export these variables when building for Intel compiler(s)
++if [[ "$JEDI_COMPILER" =~ .*"intel"* ]]; then
++    export CXXFLAGS="-gxx-name=/share/apps/compute/gnu/v8.3.0/bin/g++ -Wl,-rpath,/share/apps/compute/gnu/v8.3.0/lib64"
++    export LDFLAGS="-gxx-name=/share/apps/compute/gnu/v8.3.0/bin/g++ -Wl,-rpath,/share/apps/compute/gnu/v8.3.0/lib64"
++    #export CXXFLAGS="-std=c++14"
++    #export LDFLAGS="-std=c++14"
++fi
++
+diff --git a/buildscripts/libs/build_zlib.sh b/buildscripts/libs/build_zlib.sh
+index c4d94f1..1b15235 100755
+--- a/buildscripts/libs/build_zlib.sh
++++ b/buildscripts/libs/build_zlib.sh
+@@ -14,7 +14,7 @@ compiler=$(echo $JEDI_COMPILER | sed 's/\//-/g')
+ cd ${JEDI_STACK_ROOT}/${PKGDIR:-"pkg"}
+ 
+ software=$name-$version
+-url=http://www.zlib.net/$software.tar.gz
++url=https://www.zlib.net/$software.tar.gz
+ [[ -d $software ]] || ( rm -f $software.tar.gz; $WGET $url; tar -xf $software.tar.gz )
+ [[ ${DOWNLOAD_ONLY} =~ [yYtT] ]] && exit 0
+ 
 diff --git a/modulefiles/compiler/compilerName/compilerVersion/intelmpi/intelmpi.lua b/modulefiles/compiler/compilerName/compilerVersion/intelmpi/intelmpi.lua
 new file mode 100644
-index 0000000..a8c265c
+index 0000000..48877e5
 --- /dev/null
 +++ b/modulefiles/compiler/compilerName/compilerVersion/intelmpi/intelmpi.lua
 @@ -0,0 +1,35 @@
@@ -292,14 +330,14 @@ index 0000000..a8c265c
 +conflict(pkgName)
 +conflict("mpich","openmpi")
 +
-+always_load("intel/2019.5.281")
-+prereq("intel/2019.5.281")
++always_load("intel/2020u4")
++prereq("intel/2020u4")
 +
 +try_load("szip")
 +
 +local opt = os.getenv("JEDI_OPT") or os.getenv("OPT") or "/opt/modules"
 +--local base = "/opt/intel17/compilers_and_libraries_2017.1.132"
-+local base = "/share/apps/compute/intel/intelmpi2019/compilers_and_libraries_2019"
++local base = "/share/apps/compute/intel/intelmpi2020u4/compilers_and_libraries_2020"
 +
 +setenv("I_MPI_ROOT", pathJoin(base,"linux/mpi"))
 +setenv("MPI_ROOT", pathJoin(base,"linux/mpi"))
@@ -344,8 +382,22 @@ index 0000000..92758f8
 +whatis("Version: " .. pkgVersion)
 +whatis("Category: library")
 +whatis("Description: Intel MPI library and module access")
+diff --git a/modulefiles/core/jedi-intel/jedi-intel.lua b/modulefiles/core/jedi-intel/jedi-intel.lua
+index 33253b9..6ab1996 100644
+--- a/modulefiles/core/jedi-intel/jedi-intel.lua
++++ b/modulefiles/core/jedi-intel/jedi-intel.lua
+@@ -11,6 +11,8 @@ conflict(pkgName)
+ conflict("jedi-gnu")
+ 
+ local compiler = pathJoin("intel",pkgVersion)
++load("gnu/8.3.0")
++prereq("gnu/8.3.0")
+ load(compiler)
+ prereq(compiler)
+ try_load("mkl")
 -- 
 2.19.5
+
 EOL
 
 cecho "Setting current directory in patch file..." |& tee -a "${CCONFIGURELOG}"
@@ -357,11 +409,12 @@ git am 0001-comet.patch  |& tee -a "${CCONFIGURELOG}"
 cecho "Moving into buildscripts/ directory..." |& tee -a "${CCONFIGURELOG}"
 cd buildscripts/ 
 
-cecho "Applying additional fixes that did not make patch..." |& tee -a "${CCONFIGURELOG}"
-# Didn't make the patch
-perl -pi -e 's/url=http:/url=https:/' libs/build_zlib.sh |& tee -a "${CCONFIGURELOG}"
-perl -pi -e 's/1.2.11/1.2.12/' build_stack.sh |& tee -a "${CCONFIGURELOG}"
-perl -pi -e 's/NTHREADS=4/NTHREADS=24/' config/config_custom.sh |& tee -a "${CCONFIGURELOG}"
+#CPAPADOP these have been added in the newer patch
+#cecho "Applying additional fixes that did not make patch..." |& tee -a "${CCONFIGURELOG}"
+## Didn't make the patch
+#perl -pi -e 's/url=http:/url=https:/' libs/build_zlib.sh |& tee -a "${CCONFIGURELOG}"
+#perl -pi -e 's/1.2.11/1.2.12/' build_stack.sh |& tee -a "${CCONFIGURELOG}"
+#perl -pi -e 's/NTHREADS=4/NTHREADS=24/' config/config_custom.sh |& tee -a "${CCONFIGURELOG}"
 
 cecho "Skipping ./setup_environment.sh step, we do not need it..." |& tee -a "${CCONFIGURELOG}"
 # ./setup_environment.sh |& tee -a "${CCONFIGURELOG}"
@@ -413,6 +466,43 @@ fi
 conda activate CHANGEMEPATH/env
 export JEDI_OPT=CHANGEMEPATH/modules
 module use /share/apps/compute/modulefiles /share/apps/compute/modulefiles/applications $JEDI_OPT/modulefiles/core
+module use -a ${JEDI_OPT}/modulefiles/mpi/intel/2020u4/intelmpi/2020u4
+module use -a ${JEDI_OPT}/modulefiles/compiler/intel/2020u4
+
+
+# ------------------------- core -------------------------
+module load boost-headers/1.68.0
+module load cmake/3.20.0
+module load ecbuild/ecmwf-3.6.1
+module load eigen/3.3.7
+module load gsl_lite/0.37.0
+module load jedi-intel/2020u4
+module load json/3.9.1
+module load pybind11/2.7.0
+
+# ------------------------- mpi -------------------------
+module load eckit/ecmwf-1.18.2
+module load fckit/ecmwf-0.9.5
+module load atlas/ecmwf-0.29.0
+module load hdf5/1.12.0
+module load netcdf/4.7.4
+module load nccmp/1.8.7.0
+module load pio/2.5.1-debug
+module load pnetcdf/1.12.2
+
+# ------------------------- compiler -------------------------
+module load bufr/noaa-emc-11.5.0
+module load eccodes/2.24.0
+module load jedi-intelmpi/2020u4
+module load json-schema-validator/2.1.0
+module load lapack/3.8.0
+module load szip/2.1.1
+module load udunits/2.2.28
+module load zlib/1.2.12
+
+
+# fix the prompt
+#. ~/.bashrc
 EOL
 
 perl -pi -e "s|CHANGEMEPATH|${PWD}|" setup_environment.sh  |& tee -a "${CCONFIGURELOG}"
